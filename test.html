@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DragonFlight.html</title>
+    <link rel="stylesheet" href="css/bootstrap.css" />
+    <link rel="stylesheet" href="css/bootstrap-theme.css" />
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <style>
+    #gamePage {
+        display: none;
+    }
+    #lobbyPage {
+        padding-top: 200px;
+    }
+    canvas {
+        background-color: #00ff00;
+    }
+    #gameOverDiv {
+        position: fixed;
+        top: 200px;
+        display: none;
+    }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div id="lobbyPage">
+            <div class="row">
+                <div class="col-xs-6 col-xs-offset-3">
+                    <button id="startBtn" class="btn btn-primary btn-lg btn-block">Game Start</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="gamePage">
+        <h3>게임페이지</h3>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    <div class="row">
+        <div class="col-xs-6 col-xs-offset-3" id="gameOverDiv">
+            <button id="gameOverBtn" class="btn btn-danger btn-block btn-lg">Game Over</button>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.2.0.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+    <!-- 터치 이벤트 처리하기 위한 플러그인 -->
+    <script src="js/jquery.touchSwipe.js"></script>
+    <script type="text/javascript">
+    //필요한 객체의 참조값 얻어오기
+    var canvas = document.getElementById("gameCanvas");
+    var context = canvas.getContext("2d");
+    var width, height; //캔바스의 폭과 높이 
+
+    //배경이미지 로딩하기
+    var backImg = new Image();
+    backImg.src = "images/background/test.jpg";
+    //배경이미지의 y 좌표
+    var back1Y = 0,
+        back2Y = 0;
+
+    //드레곤 이미지 로딩하기
+    var unitImg1 = new Image();
+    var unitImg2 = new Image();
+    unitImg1.src = "images/unit1.png";
+    unitImg2.src = "images/unit2.png";
+    //드레곤 이미지를 배열에 저장하기
+    var unitImgs = [unitImg1, unitImg2];
+    //드레곤 이미지 인덱스
+    var unitImgIndex = 0;
+    //드레곤의 좌표를 담을 변수 
+    var unitX, unitY;
+    //드레곤의 크기를 담을 변소
+    var unitW;
+    //카운트를 셀 변수
+    var count = 0;
+
+    //미사일 이미지 로딩하기
+    var missImg = new Image();
+    missImg.src = "images/mi1.png";
+    //미사일의 y 축방향 속도를 저장할 변수
+    var missSpeedY;
+    //미사일 객체를 담을 배열
+    var missList = [];
+    //미사일의 크기를 저장할 변수
+    var missW;
+
+    //적기 이미지 로딩하기
+    var enemyImg1 = new Image();
+    var enemyImg2 = new Image();
+    enemyImg1.src = "images/juck1.png";
+    enemyImg2.src = "images/juck2.png";
+    //적기 이미지를 배열에 저장하기
+    var enemyImgs = [enemyImg1, enemyImg2];
+    //적기의 크기를 저장할 변수
+    var enemyW;
+    //적기의 x 좌표를 저장할 배열
+    var enemyX = [];
+    //적기 객체를 저장할 배열
+    var enemyList = [];
+    //적기가 움직이는 속도를 저장할 변수
+    var enemySpeedY;
+
+    //추락하는 적기 객체를 담을 배열
+    var fallDownList = [];
+    //인터벌 아이디를 저장할 변수 
+    var intervalId;
+
+    //게임 시작 버튼을 눌렀을때 실행할 함수 등록 
+    $("#startBtn").click(function() {
+        //로비 페이지를 보이지 않게한다.
+        $("#lobbyPage").hide();
+        //게임 페이지를 보이게 한다.
+        $("#gamePage").show();
+        //캔바스의 크기 초기화 
+        initCanvas();
+        //화면이 주기적으로 갱신될수 있도록
+        intervalId = setInterval(drawScreen, 20);
+    });
+
+    function initCanvas() {
+        var winWidth = $(window).width();
+        //화면의 폭을 얻어온다.
+        width = winWidth * 0.8;
+        //3:4 비율에 맞는 높이를 계산한다.
+        height = width * (4 / 3);
+        //캔바스의 width 속성과 height 속성에 부여하기
+        $("#gameCanvas").attr("width", width).attr("height", height);
+        //배경이미지 2 의 좌표를 결정한다. 
+        back2Y = -height;
+        //드레곤의 크기 (캔바스 폭의 1/5 크기)
+        unitW = width / 5;
+        //드레곤의 초기 좌표
+        unitX = width / 2; //캔바스의 정 중앙
+        unitY = height - unitW; //캔바스의 하단에서 드레곤의 크기 만큼 위로
+        //미사일의 속도 결정하기
+        missSpeedY = height / 70;
+        //미사일의 크기 결정하기
+        missW = unitW * 0.8; // 드레곤 이미지의 80% 크기 
+
+        //적기의 크기
+        enemyW = width / 5;
+        //적기가 움직을 5군데의 x 좌표를 계산해서 배열에 저장한다.
+        for (var i = 0; i < 5; i++) {
+            //왼쪽에서 i번째 적기의 x 좌표를 계산한다.
+            var tmp = enemyW / 2 + enemyW * i;
+            //계산된 x 좌표를 배열에 저장하기
+            enemyX.push(tmp);
+        }
+        //적기가 움직이는 속도 결정하기
+        enemySpeedY = height / 80;
+
+    }
+
+    //화면 렌더링 하는 함수 
+    function drawScreen() {
+            //배경이미지 그리기 
+            context.drawImage(backImg, 0, back1Y, width, height);
+            context.drawImage(backImg, 0, back2Y, width, height);
+            //반복문 돌면서 추락하는 적기 그리기
+            for (var i in fallDownList) {
+                var tmp = fallDownList[i];
+                context.save(); //context 의 현재 상태 저장 
+                context.translate(tmp.x, tmp.y); //평행이동
+                context.rotate(tmp.angle); //회전 
+                context.drawImage(enemyImgs[tmp.type], -tmp.size / 2 + 20, -tmp.size / 2, tmp.size, tmp.size);
+                context.restore(); //context 를 저장한 상태로 원상복구 
+            }
+
+            //반복문 돌면서 미사일 그리기
+            for (var i in missList) {
+                //i번째 미사일 객체를 불러와서 
+                var tmp = missList[i];
+                //객체에 저장된 좌표를 이용해서 미사일을 그린다. 
+                context.drawImage(missImg, tmp.x - missW / 2, tmp.y - missW / 2, missW, missW);
+            }
+
+            //반복문 돌면서 적기 그리기
+            for (var i in enemyList) {
+                var tmp = enemyList[i];
+                context.drawImage(enemyImgs[tmp.type], tmp.x - enemyW / 2, tmp.y - enemyW / 2, enemyW, enemyW);
+            }
+
+
+            //드레곤 그리기
+            context.drawImage(unitImgs[unitImgIndex], unitX - unitW / 2, unitY - unitW / 2, unitW, unitW);
+
+            backScroll(); //배경이미지 스크롤 
+            unitAnimation(); //유닛 애니메이션
+            makeMissile(); //미사일 만들기 
+            moveMissile(); //미사일 움직이기 
+            makeEnemy(); //적기 만드는 함수 호출 
+            moveEnemy(); //적기 움직이는 함수
+            check(missList); //제거할 미사일은 제거 되도록
+            check(enemyList); //제거할 적기는 제 거되도록 
+            checkMissileCollusion(); //미사일 충돌검사 
+            fallDownAnimation(); //추락하는 애니메이션 
+            check(fallDownList); //제거할 추락적기는 제거 되도록 
+            checkDragon(); //드레곤의 충돌검사
+            count++; //카운트를 1 증가 시킨다. 
+        } //drawScreen()
+
+    //드레곤과 적기의 충돌검사
+    function checkDragon() {
+        for (var i in enemyList) {
+            var tmp = enemyList[i];
+            var isDragonDie = unitX > tmp.x - enemyW / 2 &&
+                unitX < tmp.x + enemyW / 2 &&
+                unitY > tmp.y - enemyW / 2 &&
+                unitY < tmp.y + enemyW / 2;
+            if (isDragonDie) {
+                //여기가 수행된다면 i 번째 적기와 드레곤이 충돌한것이다.
+                clearInterval(intervalId); //화면 업데이트 중지 
+                $("#gameOverDiv").show();
+            }
+        }
+    }
+
+    //추락하는 애니메이션 효과 부여하는 함수 
+    function fallDownAnimation() {
+        for (var i in fallDownList) {
+            //i번째 추락객체를 얻어와서 
+            var tmp = fallDownList[i];
+            tmp.size = tmp.size * 0.98; //크기를 줄이고
+            tmp.angle += 0.1; //각도를 증가 시키고
+            if (tmp.size < 10) { //일정 크기 이하가 된다면
+                //배열에서 제거 될수 있도록 표시해둔다. 
+                tmp.isDead = true;
+            }
+        }
+    }
+
+    //미사일과 적기의 충돌검사 하는 함수 
+    function checkMissileCollusion() {
+            for (var i in missList) {
+                //i번째 미사일 객체를 불러와서 
+                var m = missList[i];
+                //반복문 돌면서 모든 적기와 충돌검사를 한다.
+                for (var j in enemyList) {
+                    //j번째 적기 객체 불러오기
+                    var e = enemyList[j];
+                    //미사일과 적기가 충돌했는지 boolean 값으로 얻어낸다. 
+                    var isShooted = m.x > e.x - enemyW / 2 &&
+                        m.x < e.x + enemyW / 2 &&
+                        m.y > e.y - enemyW / 2 &&
+                        m.y < e.y + enemyW / 2;
+                    if (isShooted) {
+                        //여기가 수행된다면 i 번째 미사일은 j번째 적기와 충돌한것이다.
+                        e.energy -= 40; //에너지 50 줄이기 
+                        if (e.energy <= 0) { //에너지가 다 닳았다면 
+                            //적기가 배열에서 제거 될수 있도록 
+                            e.isDead = true;
+                            //추락하는 객체를 만들고
+                            var obj = {};
+                            obj.x = e.x;
+                            obj.y = e.y;
+                            obj.type = e.type;
+                            obj.angle = 0;
+                            obj.size = enemyW;
+                            obj.isDead = false;
+                            //배열에 저장
+                            fallDownList.push(obj);
+                        }
+                        //미사일이 배열에서 제거 될수 있도록 
+                        m.isDead = true;
+                    } //if					
+                } //for(var j)
+            } //for(var j)
+        } //checkMissileCollusion()
+
+    //인자로 전달받은 배열에서 제거할 객체는 제거하는 함수
+    function check(array) {
+        for (var i = array.length - 1; i >= 0; i--) {
+            var tmp = array[i];
+            if (tmp.isDead) { //제거해야할 객체라면
+                //i번째 방에서 1개 제거한다. 
+                array.splice(i, 1);
+            }
+        }
+    }
+
+    //적기를 움직이는 함수 
+    function moveEnemy() {
+        //반복문 돌면서 모든 적기를 움직인다.
+        for (var i in enemyList) {
+            var tmp = enemyList[i];
+            tmp.y = tmp.y + enemySpeedY;
+            if (tmp.y > height + enemyW / 2) { //아래로 벗어 났다면
+                //배열에서 제거 될수 있도록 
+                tmp.isDead = true;
+            }
+        }
+    }
+
+    //적기 객체를 만드는 함수
+    function makeEnemy() {
+        //랜덤한 정수를 얻어낸다
+        var ranNum = (parseInt(Math.random() * 30))-10;
+        if (ranNum != 10) {
+            return;
+        }
+
+        //적기 5개 만들어서 배열에 저장하기 
+        for (var i = 0; i < 5; i++) {
+            var obj = {};
+            obj.x = enemyX[i];
+            obj.y = 0;
+            //0혹은 1중에 랜덤한 수를 얻어낸다.
+            var type = parseInt(Math.random() * 2);
+            //객체에 저장하기 
+            obj.type = type;
+            if (type == 0) { //노란색 적기
+                obj.energy = 150;
+            } else if (type == 1) { //하얀색 적기 
+                obj.energy = 50;
+            }
+            obj.isDead = false;
+            enemyList.push(obj);
+        }
+    }
+
+    //미사일을 움직이는 함수
+    function moveMissile() {
+        for (var i in missList) {
+            var tmp = missList[i];
+            //미사일 객체의 y좌표를 missSpeedY 값 만큼 감소 시킨다.
+            tmp.y = tmp.y - missSpeedY;
+            if (tmp.y < -missW / 2) { //위쪽으로 벗어난 미사일은
+                tmp.isDead = true; //제거될수 있도록 true 로 바꿔준다. 
+            }
+        }
+    }
+
+    //미사일 객체 만들어서 배열에 저장하는 함수
+    function makeMissile() {
+        if (count % 5 != 0) {
+            return;
+        }
+        //미사일 객체를 만든다.
+        var obj = {};
+        //미사일의 초기 좌표는 드레곤의 좌표와 같다 
+        obj.x = unitX;
+        obj.y = unitY;
+        obj.isDead = false; //미사일을 제거해야 할지 여부
+        //만든 미사일 객체를 배열에 저장한다.
+        missList.push(obj);
+    }
+
+    //유닛 이미지 애니메이션 함수
+    function unitAnimation() {
+        if (count % 10 != 0) { //10번 호출될때 한번만 바뀌도록 
+            return;
+        }
+        unitImgIndex++; //이미지 인덱스를 1 증가 시킨다.
+        if (unitImgIndex == 2) { //없는 인덱스라면
+            unitImgIndex = 0; //처음으로 되돌린다. 
+        }
+    }
+
+    //배경이미지 스크롤 하는 함수 
+    function backScroll() {
+            back1Y += 2;
+            back2Y += 2;
+            if (back1Y >= height) { //배경1이 한계점에 다다랏을때 
+                back1Y = -height;
+                back2Y = 0;
+            }
+            if (back2Y >= height) { //배경2가 한계점에 다다랏을때 
+                back2Y = -height;
+                back1Y = 0;
+            }
+        }
+        //터치가 스타트 되었을때 드레곤의 x 좌표를 저장할 변수
+    var startUnitX;
+
+    //터치 이벤트 처리 
+    $("#gameCanvas").swipe({
+        swipeStatus: function(event, phase, direction, distance) {
+            switch (phase) {
+                case "start": //터치가 시작되었을때
+                    //드레곤의 현재 좌표를 변수에 저장한다.
+                    startUnitX = unitX;
+                    break;
+                case "move": //스와이프 하는 중일때 
+                    if (direction == "left") { //왼쪽 스와이프 	
+                        unitX = startUnitX - distance;
+                        if (unitX < 0) { //왼쪽으로 벗어나지 않도록
+                            unitX = 0;
+                        }
+                    } else if (direction == "right") { //오른쪽 스와이프 
+                        unitX = startUnitX + distance;
+                        if (unitX > width) { //오른쪽으로 벗어나지 않도록 
+                            unitX = width;
+                        }
+                    }
+                    break;
+            }
+        },
+        allowPageScroll: "vertical" //수직으로는 스크롤 가능하도록 한다.
+    });
+
+    //GameOver 버튼을 눌렀을때 실행할 함수 등록 
+    $("#gameOverBtn").click(function() {
+        $("#gamePage").css("display", "none");
+        $("#lobbyPage").css("display", "block");
+        $("#gameOverDiv").css("display", "none");
+        //배경화면의 위치 초기화
+        back1Y = 0;
+        back2Y = -height;
+        //미사일 배열 초기화
+        missList = [];
+        //적기 배열 초기화
+        enemyList = [];
+        //드레곤의 위치 초기화
+        unitX = width / 2;
+        //추락하는 적기 배열 초기화
+        fallDownList = [];
+    });
+    </script>
+</body>
+
+</html>
