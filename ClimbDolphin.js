@@ -1,5 +1,5 @@
 var width = 600;
-var height = 700;
+var height = 800;
 
 var count = 0;
 
@@ -8,9 +8,10 @@ var img = new Image();
 img.src = "./images/background/background.png";
 
 var y1 = 0;
-var y2 = -700;
+var y2 = -height;
 
 // 키 입력 정보
+// 동시 입력 구현을 위해 만든 것
 var keyPressOn = {};
 
 // 플레이어 유닛 정보
@@ -33,8 +34,8 @@ var unitSpeed = 5;
 // 미사일 정보
 var missile = new Image();
 missile.src = "./images/enemy1.png";
-var missileSpeed = height / 70;
-var missileW = unitW * 0.8;
+var missileSpeed = height / 80;
+var missileW = unitW / 2;
 var missileList = [];
 
 // 적 정보
@@ -53,7 +54,7 @@ for (var i = 0; i < 5; i++) {
     var tmp = enemyW / 2 + enemyW * i;
     enemyX.push(tmp);
 }
-enemySpeed = height / 70;
+enemySpeed = height / 80;
 
 // 변수 초기화 함수
 function init() {
@@ -66,8 +67,8 @@ function drawscreen() {
     var canvas = document.getElementById("test");
     var context = canvas.getContext("2d");
 
-    context.drawImage(img, 0, y1, 600, 700);
-    context.drawImage(img, 0, y2, 600, 700);
+    context.drawImage(img, 0, y1, width, height);
+    context.drawImage(img, 0, y2, width, height);
 
     document.addEventListener("keydown", getKeyDown, false);
     document.addEventListener("keyup", getKeyUp, false);
@@ -83,12 +84,16 @@ function drawscreen() {
     }
 
     context.drawImage(unitImg[unitImgIndex], unitX - unitW / 2, unitY - unitW / 2, unitW, unitW);
+    backscroll();
     makemissile();
     moveMissile();
     makeenemy();
     moveenemy();
     calcUnint();
-    backscroll();
+    deadCheck(missileList);
+    deadCheck(enemyList);
+    checkMissileEnemyCrush();
+    checkCrush();
     count++;
 }
 
@@ -99,22 +104,25 @@ function backscroll() {
     y1 += 5;
     y2 += 5;
 
-    if( y1 >= 700 ){
+    if( y1 >= height ){
         y1 = 0;
-        y2 = -700;
+        y2 = -height;
     }
 
-    if( y2 >= 700 ){
-        y1 = -700;
+    if( y2 >= height ){
+        y1 = -height;
         y2 = 0;
     }
 }
 
 // 적기 생성
 function makeenemy() {
+    if(count % 2 != 0) {
+        return ;
+    }
 
     var randomnum = (parseInt(Math.random() * 30)) - 10;
-
+    
     if(randomnum != 10) {
         return ;
     }
@@ -150,7 +158,7 @@ function makemissile() {
     var obj = {};
     obj.x = unitX;
     obj.y = unitY;
-    obj.isDead = false;
+    obj.isShoot = false;
     missileList.push(obj);
 }
 
@@ -168,6 +176,7 @@ function moveMissile() {
 }
 
 // 키보드 입력 처리 함수
+// 출처 : https://nagarry.tistory.com/168
 function getKeyDown(event) {
     var keyValue;
 
@@ -234,5 +243,53 @@ function calcUnint() {
     }
 }
 
+// 유저와 장애물의 충돌 조건
+function checkCrush() {
+    for(var i in enemyList) {
+        var tmp = enemyList[i];
+        var playerDead = unitX > tmp.x - enemyW / 2
+        && unitX < tmp.x + enemyW / 2
+        && unitY > tmp.y - enemyW / 2
+        && unitY < tmp.y + enemyW / 2;
+        if(playerDead) {
+            clearInterval(intervalId);
+            // 게임 오버 화면 출력 부분 추가해주셈
+
+        }
+    }
+
+}
+
+// 객체 삭제 조건 확인
+function checkMissileEnemyCrush() {
+    for(var i in missileList) {
+        var tmpM = missileList[i];
+        for(var j in enemyList) {
+            var tmpE = enemyList[j];
+
+            var isShooted = tmpM.x > tmpE.x - enemyW / 2 
+            && tmpM.x < tmpE.x + enemyW / 2 
+            && tmpM.y > tmpE.y - enemyW / 2 
+            && tmpM.y < tmpE.y + enemyW / 2;
+
+            if(isShooted) {
+                tmpE.isDead = true;
+                tmpM.isShoot = true;
+            }
+
+        }
+    }
+}
+
+// 객체 삭제 함수
+function deadCheck(array) {
+    for (var i = array.length - 1; i >= 0; i--){
+        var tmp = array[i];
+        if(tmp.isDead || tmp.isShoot) {
+            array.splice(i, 1);
+        }
+    }
+}
+
 // 화면 갱신 주기
-setInterval(drawscreen, 22.5);
+var intervalId = setInterval(drawscreen, 20);
