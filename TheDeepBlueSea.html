@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>The Deep Blue Sea</title>
+    <script src="TheDeepBlueSea.js"></script>
+    <style>
+        #gamePage {
+            display: none;
+            position: relative;
+        }
+        #lobbyPage {
+            background-size: 600px, 900px;
+            width: 600px;
+            height: 900px;
+            background-image: url("./images/lobby.png");
+        }
+        #gameOverDiv {
+            background-image: url("./images/gameover.png");
+            background-size: 600px, 900px;
+            width: 600px;
+            height: 900px;
+            position: absolute;
+            display: none;
+        }
+        #gameOverBtn {
+            background: url("./images/replay.png");
+            position: absolute;
+            top: 650px;
+            left: 200px;
+            background-size: 200px, 100px;
+            width: 200px; 
+            height: 82px;
+            border: none;
+        }
+        #startbtn {
+            background: url("./images/start.png");
+            position: absolute;
+            border: none;
+            top: 380px;
+            left: 200px;
+            background-size: 200px, 100px;
+            width: 200px; 
+            height: 82px;
+        }
+        canvas{
+            background-color: aqua;
+        }
+    </style>
+</head>
+<body>
+    <div id="lobbyPage" style="position: relative; top: 17px; left: 17px">
+        <button id="startbtn" onclick="startClick();"></button>
+    </div>
+    <div id="gamePage" style="position: absolute; top: 25px; left: 25px">
+        <canvas id="gameCanvas" width="600" height="900" style="position: relative;"></canvas>
+        <div id="gameOverDiv" style="position: absolute; top: 0px; left: 0px">
+            <button id="gameOverBtn" onclick="restart();"></button>
+        </div>
+        
+    </div>
+</body> 
+</html>
